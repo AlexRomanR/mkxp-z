@@ -31,6 +31,10 @@
 class Bitmap;
 struct TEXFBO;
 
+/* Uniform values for a single draw (render pass), applied on top of the ones
+ * set with setFloats: (name, 1-4 floats) */
+typedef std::vector<std::pair<std::string, std::vector<float> > > UniformList;
+
 class UserShader : public Disposable
 {
 public:
@@ -54,7 +58,7 @@ public:
 	 * blend: -1 replace, 0 normal (alpha), 1 add, 2 subtract, 3 multiply.
 	 * smooth: bilinear filtering on every input texture. */
 	void draw(TEXFBO &target, const IntRect &dstRect, TEXFBO *source,
-	          int blend, bool smooth);
+	          int blend, bool smooth, const UniformList *overrides = 0);
 
 	/* Exact-size scratch FBO (shading a bitmap onto itself needs a copy) */
 	static TEXFBO &scratch(int width, int height);

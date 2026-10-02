@@ -28,6 +28,10 @@
 
 #include "sigslot/signal.hpp"
 
+#include <string>
+#include <utility>
+#include <vector>
+
 class Font;
 class ShaderBase;
 class UserShader;
@@ -134,7 +138,8 @@ public:
 	 * this bitmap: its previous content). blend: -1 replace, 0 normal,
 	 * 1 add, 2 subtract, 3 multiply. smooth: bilinear inputs. */
 	void shade(UserShader &shader, Bitmap *src, const IntRect &rect,
-	           int blend, bool smooth);
+	           int blend, bool smooth,
+	           const std::vector<std::pair<std::string, std::vector<float> > > *overrides = 0);
 	/* Content changed on the GPU (render target): drop CPU-side caches */
 	void gpuModified(const IntRect &rect);
 

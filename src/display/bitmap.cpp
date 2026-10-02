@@ -1607,7 +1607,7 @@ void Bitmap::gpuModified(const IntRect &rect)
 }
 
 void Bitmap::shade(UserShader &shader, Bitmap *src, const IntRect &rect,
-                   int blend, bool smooth)
+                   int blend, bool smooth, const UniformList *overrides)
 {
     guardDisposed();
     GUARD_MEGA;
@@ -1643,7 +1643,7 @@ void Bitmap::shade(UserShader &shader, Bitmap *src, const IntRect &rect,
     if (dstRect.w <= 0 || dstRect.h <= 0)
         dstRect = IntRect(0, 0, dst.width, dst.height);
 
-    shader.draw(dst, dstRect, source, blend, smooth);
+    shader.draw(dst, dstRect, source, blend, smooth, overrides);
 
     p->addTaintedArea(dstRect);
     p->onModified();

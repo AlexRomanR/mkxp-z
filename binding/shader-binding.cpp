@@ -89,6 +89,38 @@ static std::string uniformName(VALUE name)
 	return std::string(RSTRING_PTR(name), RSTRING_LEN(name));
 }
 
+/* {"u_pos" => [x, y], :u_radio => 3.0, ...} -> UniformList (shared with the
+ * Bitmap#shade and Viewport#render_passes bindings) */
+static int hashToUniformsEach(VALUE key, VALUE val, VALUE arg)
+{
+	UniformList *out = reinterpret_cast<UniformList*>(arg);
+	std::vector<float> values;
+
+	if (RB_TYPE_P(val, RUBY_T_ARRAY))
+	{
+		long n = RARRAY_LEN(val);
+		for (long i = 0; i < n && i < 4; ++i)
+			values.push_back((float) NUM2DBL(rb_ary_entry(val, i)));
+	}
+	else
+	{
+		values.push_back((float) NUM2DBL(val));
+	}
+
+	out->push_back(std::make_pair(uniformName(key), values));
+
+	return ST_CONTINUE;
+}
+
+void alexHashToUniforms(VALUE hash, UniformList &out)
+{
+	if (NIL_P(hash))
+		return;
+
+	Check_Type(hash, T_HASH);
+	rb_hash_foreach(hash, hashToUniformsEach, (VALUE) &out);
+}
+
 RB_METHOD(shaderInitialize) {
 	const char *frag = 0;
 	const char *vert = 0;

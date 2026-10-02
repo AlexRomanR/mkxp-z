@@ -86,7 +86,10 @@ DEF_GFX_PROP_I(Viewport, OX)
 DEF_GFX_PROP_OBJ_REF(Viewport, Bitmap, RenderTarget, "render_target")
 DEF_GFX_PROP_B(Viewport, RenderTargetClear)
 
-/* viewport.render_passes = [[shader, src, target, rect, blend, smooth], ...]
+void alexHashToUniforms(VALUE hash, UniformList &out);
+
+/* viewport.render_passes = [[shader, src, target, rect, blend, smooth, uniforms], ...]
+ * (uniforms: optional hash of values only for that pass)
  * (same meaning as Bitmap#shade; run each frame right after the viewport
  * renders into its render target) */
 RB_METHOD_GUARD(viewportSetRenderPasses) {
@@ -113,6 +116,7 @@ RB_METHOD_GUARD(viewportSetRenderPasses) {
             VALUE blend = rb_ary_entry(e, 4);
             pass.blend = NIL_P(blend) ? -1 : NUM2INT(blend);
             pass.smooth = RTEST(rb_ary_entry(e, 5));
+            alexHashToUniforms(rb_ary_entry(e, 6), pass.uniforms);
             
             passes.push_back(pass);
         }

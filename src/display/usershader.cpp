@@ -368,7 +368,7 @@ void UserShader::restoreInputs()
 }
 
 void UserShader::draw(TEXFBO &target, const IntRect &dstRect, TEXFBO *source,
-                      int blend, bool smooth)
+                      int blend, bool smooth, const UniformList *overrides)
 {
 	guardDisposed();
 
@@ -397,6 +397,28 @@ void UserShader::draw(TEXFBO &target, const IntRect &dstRect, TEXFBO *source,
 
 	bindInputs(source, Vec2i(target.width, target.height),
 	           Vec2i(dstRect.w, dstRect.h), smooth);
+
+	/* Per-draw values (render passes): only for this draw. The stored value
+	 * (if any) is re-applied on the next draw by bindInputs */
+	if (overrides)
+	{
+		for (size_t i = 0; i < overrides->size(); ++i)
+		{
+			GLint l = location((*overrides)[i].first);
+			const std::vector<float> &v = (*overrides)[i].second;
+
+			if (l < 0 || v.empty())
+				continue;
+
+			switch (v.size())
+			{
+			case 1: gl.Uniform1f(l, v[0]); break;
+			case 2: gl.Uniform2f(l, v[0], v[1]); break;
+			case 3: gl.Uniform3f(l, v[0], v[1], v[2]); break;
+			default: gl.Uniform4f(l, v[0], v[1], v[2], v[3]); break;
+			}
+		}
+	}
 
 	if (blend < 0)
 	{

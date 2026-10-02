@@ -27,6 +27,8 @@
 #include "disposable.h"
 #include "util.h"
 
+#include <string>
+#include <utility>
 #include <vector>
 
 struct ViewportPrivate;
@@ -43,6 +45,8 @@ struct RenderPass
 	IntRect rect;
 	int blend;
 	bool smooth;
+	/* Uniforms only for this pass: (name, 1-4 floats) */
+	std::vector<std::pair<std::string, std::vector<float> > > uniforms;
 };
 
 class Viewport : public Scene, public SceneElement, public Flashable, public Disposable

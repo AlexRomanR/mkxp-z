@@ -154,20 +154,24 @@ RB_METHOD_GUARD(bitmapBlt) {
 }
 RB_METHOD_GUARD_END
 
-/* bitmap.shade(shader[, src[, rect[, blend[, smooth]]]]) (AlexRomanR fork)
+/* bitmap.shade(shader[, src[, rect[, blend[, smooth[, uniforms]]]]]) (AlexRomanR fork)
+ * uniforms: hash of values only for this draw
  * src: nil (no input), another bitmap, or self (its previous content)
  * blend: -1 replace (default), 0 normal, 1 add, 2 subtract, 3 multiply */
+void alexHashToUniforms(VALUE hash, UniformList &out);
+
 RB_METHOD_GUARD(bitmapShade) {
     Bitmap *b = getPrivateData<Bitmap>(self);
     
     VALUE shaderObj;
     VALUE srcObj = Qnil;
     VALUE rectObj = Qnil;
+    VALUE uniformsObj = Qnil;
     int blend = -1;
     bool smooth = false;
     
-    rb_get_args(argc, argv, "o|ooib", &shaderObj, &srcObj, &rectObj,
-                &blend, &smooth RB_ARG_END);
+    rb_get_args(argc, argv, "o|ooibo", &shaderObj, &srcObj, &rectObj,
+                &blend, &smooth, &uniformsObj RB_ARG_END);
     
     UserShader *shader = getPrivateDataCheck<UserShader>(shaderObj, UserShaderType);
     Bitmap *src = NIL_P(srcObj) ? 0 : getPrivateDataCheck<Bitmap>(srcObj, BitmapType);
@@ -176,7 +180,11 @@ RB_METHOD_GUARD(bitmapShade) {
     if (!NIL_P(rectObj))
         rect = getPrivateDataCheck<Rect>(rectObj, RectType)->toIntRect();
     
-    GFX_GUARD_EXC(b->shade(*shader, src, rect, blend, smooth););
+    UniformList uniforms;
+    alexHashToUniforms(uniformsObj, uniforms);
+    
+    GFX_GUARD_EXC(b->shade(*shader, src, rect, blend, smooth,
+                           uniforms.empty() ? 0 : &uniforms););
     
     return self;
 }

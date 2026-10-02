@@ -285,7 +285,8 @@ void Viewport::compositeToTarget()
 		try
 		{
 			pass.target->shade(*pass.shader, pass.source, pass.rect,
-			                   pass.blend, pass.smooth);
+			                   pass.blend, pass.smooth,
+			                   pass.uniforms.empty() ? 0 : &pass.uniforms);
 		}
 		catch (const Exception &e)
 		{
