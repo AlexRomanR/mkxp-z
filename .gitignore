@@ -76,3 +76,8 @@ DerivedData/
 
 ## Gcc Patch
 /*.gcno
+
+# Local build artifacts (Alex fork)
+.ccache/
+build-*.log
+build-status.txt
