@@ -1253,6 +1253,7 @@ main_source = files(
     'display/tilemap.cpp',
     'display/tilemapvx.cpp',
     'display/viewport.cpp',
+    'display/usershader.cpp',
     'display/window.cpp',
     'display/windowvx.cpp',
 

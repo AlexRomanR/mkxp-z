@@ -27,6 +27,7 @@
 #include "font.h"
 #include "sharedstate.h"
 #include "graphics.h"
+#include "usershader.h"
 
 #if RAPI_FULL > 187
 DEF_TYPE(Bitmap);
@@ -148,6 +149,34 @@ RB_METHOD_GUARD(bitmapBlt) {
     
         GFX_GUARD_EXC(b->blt(x, y, *src, srcRect->toIntRect(), opacity););
     }
+    
+    return self;
+}
+RB_METHOD_GUARD_END
+
+/* bitmap.shade(shader[, src[, rect[, blend[, smooth]]]]) (AlexRomanR fork)
+ * src: nil (no input), another bitmap, or self (its previous content)
+ * blend: -1 replace (default), 0 normal, 1 add, 2 subtract, 3 multiply */
+RB_METHOD_GUARD(bitmapShade) {
+    Bitmap *b = getPrivateData<Bitmap>(self);
+    
+    VALUE shaderObj;
+    VALUE srcObj = Qnil;
+    VALUE rectObj = Qnil;
+    int blend = -1;
+    bool smooth = false;
+    
+    rb_get_args(argc, argv, "o|ooib", &shaderObj, &srcObj, &rectObj,
+                &blend, &smooth RB_ARG_END);
+    
+    UserShader *shader = getPrivateDataCheck<UserShader>(shaderObj, UserShaderType);
+    Bitmap *src = NIL_P(srcObj) ? 0 : getPrivateDataCheck<Bitmap>(srcObj, BitmapType);
+    IntRect rect;
+    
+    if (!NIL_P(rectObj))
+        rect = getPrivateDataCheck<Rect>(rectObj, RectType)->toIntRect();
+    
+    GFX_GUARD_EXC(b->shade(*shader, src, rect, blend, smooth););
     
     return self;
 }
@@ -934,6 +963,7 @@ void bitmapBindingInit() {
 
     _rb_define_method(klass, "rect", bitmapRect);
     _rb_define_method(klass, "blt", bitmapBlt);
+    _rb_define_method(klass, "shade", bitmapShade);
     _rb_define_method(klass, "stretch_blt", bitmapStretchBlt);
     _rb_define_method(klass, "fill_rect", bitmapFillRect);
     _rb_define_method(klass, "clear", bitmapClear);

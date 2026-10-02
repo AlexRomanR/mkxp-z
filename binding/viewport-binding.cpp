@@ -26,6 +26,10 @@
 #include "sceneelement-binding.h"
 #include "sharedstate.h"
 #include "viewport.h"
+#include "bitmap.h"
+#include "usershader.h"
+
+#include <vector>
 
 #if RAPI_FULL > 187
 DEF_TYPE(Viewport);
@@ -77,6 +81,57 @@ DEF_GFX_PROP_OBJ_VAL(Viewport, Color, Color, "color")
 DEF_GFX_PROP_OBJ_VAL(Viewport, Tone, Tone, "tone")
 
 DEF_GFX_PROP_I(Viewport, OX)
+
+/* Render target (AlexRomanR fork) */
+DEF_GFX_PROP_OBJ_REF(Viewport, Bitmap, RenderTarget, "render_target")
+DEF_GFX_PROP_B(Viewport, RenderTargetClear)
+
+/* viewport.render_passes = [[shader, src, target, rect, blend, smooth], ...]
+ * (same meaning as Bitmap#shade; run each frame right after the viewport
+ * renders into its render target) */
+RB_METHOD_GUARD(viewportSetRenderPasses) {
+    Viewport *v = getPrivateData<Viewport>(self);
+    
+    rb_check_argc(argc, 1);
+    VALUE ary = argv[0];
+    std::vector<RenderPass> passes;
+    
+    if (!NIL_P(ary)) {
+        Check_Type(ary, T_ARRAY);
+        
+        for (long i = 0; i < RARRAY_LEN(ary); ++i) {
+            VALUE e = rb_ary_entry(ary, i);
+            Check_Type(e, T_ARRAY);
+            
+            RenderPass pass;
+            pass.shader = getPrivateDataCheck<UserShader>(rb_ary_entry(e, 0), UserShaderType);
+            VALUE src = rb_ary_entry(e, 1);
+            pass.source = NIL_P(src) ? 0 : getPrivateDataCheck<Bitmap>(src, BitmapType);
+            pass.target = getPrivateDataCheck<Bitmap>(rb_ary_entry(e, 2), BitmapType);
+            VALUE rect = rb_ary_entry(e, 3);
+            pass.rect = NIL_P(rect) ? IntRect() : getPrivateDataCheck<Rect>(rect, RectType)->toIntRect();
+            VALUE blend = rb_ary_entry(e, 4);
+            pass.blend = NIL_P(blend) ? -1 : NUM2INT(blend);
+            pass.smooth = RTEST(rb_ary_entry(e, 5));
+            
+            passes.push_back(pass);
+        }
+    }
+    
+    GFX_GUARD_EXC(v->setRenderPasses(passes););
+    
+    /* Keeps shaders and bitmaps alive while the viewport uses them */
+    rb_iv_set(self, "render_passes", ary);
+    
+    return ary;
+}
+RB_METHOD_GUARD_END
+
+RB_METHOD(viewportGetRenderPasses) {
+    RB_UNUSED_PARAM;
+    
+    return rb_iv_get(self, "render_passes");
+}
 DEF_GFX_PROP_I(Viewport, OY)
 
 void viewportBindingInit() {
@@ -98,4 +153,8 @@ void viewportBindingInit() {
     INIT_PROP_BIND(Viewport, OY, "oy");
     INIT_PROP_BIND(Viewport, Color, "color");
     INIT_PROP_BIND(Viewport, Tone, "tone");
+    INIT_PROP_BIND(Viewport, RenderTarget, "render_target");
+    INIT_PROP_BIND(Viewport, RenderTargetClear, "render_target_clear");
+    _rb_define_method(klass, "render_passes=", viewportSetRenderPasses);
+    _rb_define_method(klass, "render_passes", viewportGetRenderPasses);
 }

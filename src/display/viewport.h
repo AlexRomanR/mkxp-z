@@ -27,7 +27,23 @@
 #include "disposable.h"
 #include "util.h"
 
+#include <vector>
+
 struct ViewportPrivate;
+class Bitmap;
+class UserShader;
+
+/* A shader pass run right after a viewport renders into its render target
+ * (AlexRomanR fork). Same meaning as the arguments of Bitmap#shade. */
+struct RenderPass
+{
+	UserShader *shader;
+	Bitmap *source;
+	Bitmap *target;
+	IntRect rect;
+	int blend;
+	bool smooth;
+};
 
 class Viewport : public Scene, public SceneElement, public Flashable, public Disposable
 {
@@ -45,6 +61,16 @@ public:
 	DECL_ATTR( Color, Color& )
 	DECL_ATTR( Tone,  Tone&  )
 
+	/* Render target (AlexRomanR fork): when set, the viewport draws its
+	 * children into this bitmap (top-left = viewport origin) instead of
+	 * the screen, then runs its render passes. Nothing is drawn to the
+	 * screen: show the result with a sprite. Tone/color/flash of the
+	 * viewport are not applied in this mode (the game applies them). */
+	void setRenderTarget(Bitmap *bitmap);
+	Bitmap *getRenderTarget() const;
+	DECL_ATTR( RenderTargetClear, bool )
+	void setRenderPasses(const std::vector<RenderPass> &passes);
+
 	void initDynAttribs();
 
 private:
@@ -52,6 +78,7 @@ private:
 	void geometryChanged();
 
 	void composite();
+	void compositeToTarget();
 	void draw();
 	void onGeometryChange(const Geometry &);
 	bool isEffectiveViewport(Rect *&, Color *&, Tone *&) const;

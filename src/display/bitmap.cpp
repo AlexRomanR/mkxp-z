@@ -40,6 +40,7 @@
 #include "glstate.h"
 #include "texpool.h"
 #include "shader.h"
+#include "usershader.h"
 #include "filesystem.h"
 #include "font.h"
 #include "eventthread.h"
@@ -1597,6 +1598,55 @@ IntRect Bitmap::rect() const
     guardDisposed();
     
     return IntRect(0, 0, width(), height());
+}
+
+void Bitmap::gpuModified(const IntRect &rect)
+{
+    p->addTaintedArea(rect);
+    p->onModified();
+}
+
+void Bitmap::shade(UserShader &shader, Bitmap *src, const IntRect &rect,
+                   int blend, bool smooth)
+{
+    guardDisposed();
+    GUARD_MEGA;
+    GUARD_ANIMATED;
+
+    TEXFBO &dst = getGLTypes();
+    TEXFBO *source = 0;
+
+    if (src == this)
+    {
+        /* Can't sample the texture being drawn into: work on a copy */
+        TEXFBO &copy = UserShader::scratch(dst.width, dst.height);
+
+        GLMeta::blitBegin(copy, false, SameScale);
+        GLMeta::blitSource(dst, SameScale);
+        GLMeta::blitRectangle(IntRect(0, 0, dst.width, dst.height), Vec2i());
+        GLMeta::blitEnd();
+
+        source = &copy;
+    }
+    else if (src)
+    {
+        if (src->isDisposed())
+            throw Exception(Exception::RGSSError, "disposed bitmap");
+
+        if (src->isMega())
+            throw Exception(Exception::MKXPError, "shade: source bitmap is too big for the GPU");
+
+        source = &src->getGLTypes();
+    }
+
+    IntRect dstRect = rect;
+    if (dstRect.w <= 0 || dstRect.h <= 0)
+        dstRect = IntRect(0, 0, dst.width, dst.height);
+
+    shader.draw(dst, dstRect, source, blend, smooth);
+
+    p->addTaintedArea(dstRect);
+    p->onModified();
 }
 
 void Bitmap::blt(int x, int y,

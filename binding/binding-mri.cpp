@@ -87,6 +87,7 @@ void fontBindingInit();
 void bitmapBindingInit();
 void spriteBindingInit();
 void viewportBindingInit();
+void shaderBindingInit();
 void planeBindingInit();
 void windowBindingInit();
 void tilemapBindingInit();
@@ -168,6 +169,7 @@ static void mriBindingInit() {
     bitmapBindingInit();
     spriteBindingInit();
     viewportBindingInit();
+    shaderBindingInit();
     planeBindingInit();
     
     if (rgssVer == 1) {

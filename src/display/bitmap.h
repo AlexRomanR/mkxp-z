@@ -30,6 +30,7 @@
 
 class Font;
 class ShaderBase;
+class UserShader;
 struct TEXFBO;
 struct SDL_Surface;
 
@@ -127,6 +128,15 @@ public:
     bool isAnimated() const;
 
 	IntRect rect() const;
+
+	/* Runs a game shader drawing a quad over `rect` of this bitmap
+	 * (AlexRomanR fork). src: texture sampled as "texture" (null: none;
+	 * this bitmap: its previous content). blend: -1 replace, 0 normal,
+	 * 1 add, 2 subtract, 3 multiply. smooth: bilinear inputs. */
+	void shade(UserShader &shader, Bitmap *src, const IntRect &rect,
+	           int blend, bool smooth);
+	/* Content changed on the GPU (render target): drop CPU-side caches */
+	void gpuModified(const IntRect &rect);
 
 	void blt(int x, int y,
 	         const Bitmap &source, const IntRect &rect,

@@ -27,6 +27,11 @@
 #include "quad.h"
 #include "glstate.h"
 #include "graphics.h"
+#include "bitmap.h"
+#include "usershader.h"
+#include "gl-util.h"
+#include "exception.h"
+#include "debugwriter.h"
 
 #include <SDL_rect.h>
 
@@ -46,6 +51,12 @@ struct ViewportPrivate
 	IntRect screenRect;
 	int isOnScreen;
 
+	/* Render target (AlexRomanR fork) */
+	Bitmap *target;
+	bool targetClear;
+	std::vector<RenderPass> passes;
+	sigslot::connection targetDispCon;
+
 	EtcTemps tmp;
 
 	ViewportPrivate(int x, int y, int width, int height, Viewport *self)
@@ -53,7 +64,9 @@ struct ViewportPrivate
 	      rect(&tmp.rect),
 	      color(&tmp.color),
 	      tone(&tmp.tone),
-	      isOnScreen(false)
+	      isOnScreen(false),
+	      target(0),
+	      targetClear(true)
 	{
 		rect->set(x, y, width, height);
 		updateRectCon();
@@ -62,6 +75,7 @@ struct ViewportPrivate
 	~ViewportPrivate()
 	{
 		rectCon.disconnect();
+		targetDispCon.disconnect();
 	}
 
 	void onRectChange()
@@ -188,6 +202,12 @@ void Viewport::composite()
 	if (emptyFlashFlag)
 		return;
 
+	if (p->target)
+	{
+		compositeToTarget();
+		return;
+	}
+
 	bool renderEffect = p->needsEffectRender(flashing);
 
 	if (elements.getSize() == 0 && !renderEffect)
@@ -207,6 +227,114 @@ void Viewport::composite()
 
 	glState.scissorBox.pop();
 	glState.scissorTest.pop();
+}
+
+/* Render target (AlexRomanR fork) */
+void Viewport::compositeToTarget()
+{
+	Bitmap *target = p->target;
+
+	if (target->isDisposed() || target->isMega() || target->isAnimated())
+		return;
+
+	TEXFBO &tf = target->getGLTypes();
+	const IntRect rect = p->rect->toIntRect();
+	const IntRect &screen = scene->getGeometry().rect;
+
+	FBO::ID previous = FBO::boundFramebufferID;
+	FBO::bind(tf.fbo);
+
+	/* Children are positioned in screen coordinates: shifting the GL
+	 * viewport by -rect.pos puts the viewport origin at the target's 0,0
+	 * (the projection uses the screen size, so the mapping stays 1:1) */
+	glState.viewport.pushSet(IntRect(-rect.x, -rect.y, screen.w, screen.h));
+	glState.scissorTest.pushSet(true);
+	glState.scissorBox.pushSet(IntRect(0, 0, std::min(rect.w, tf.width),
+	                                   std::min(rect.h, tf.height)));
+
+	if (p->targetClear)
+	{
+		glState.clearColor.pushSet(Vec4());
+		FBO::clear();
+		glState.clearColor.pop();
+	}
+
+	if (elements.getSize() > 0)
+		Scene::composite();
+
+	glState.scissorBox.pop();
+	glState.scissorTest.pop();
+	glState.viewport.pop();
+
+	FBO::bind(previous);
+
+	/* The target changed on the GPU: drop CPU caches (get_pixel) */
+	target->gpuModified(IntRect(0, 0, tf.width, tf.height));
+
+	/* Passes run now, inside the frame, so whatever shows their result
+	 * later in this same frame is up to date (no 1-frame lag) */
+	for (size_t i = 0; i < p->passes.size(); ++i)
+	{
+		RenderPass &pass = p->passes[i];
+
+		if (!pass.shader || pass.shader->isDisposed() ||
+		    !pass.target || pass.target->isDisposed() ||
+		    (pass.source && pass.source->isDisposed()))
+			continue;
+
+		try
+		{
+			pass.target->shade(*pass.shader, pass.source, pass.rect,
+			                   pass.blend, pass.smooth);
+		}
+		catch (const Exception &e)
+		{
+			/* Never break the frame because of a pass */
+			Debug() << "Viewport render pass" << i << "failed:" << e.msg;
+		}
+	}
+}
+
+void Viewport::setRenderTarget(Bitmap *bitmap)
+{
+	guardDisposed();
+
+	p->targetDispCon.disconnect();
+	p->target = bitmap;
+
+	if (bitmap)
+	{
+		ViewportPrivate *priv = p;
+		p->targetDispCon = bitmap->wasDisposed.connect([priv]() { priv->target = 0; });
+	}
+}
+
+Bitmap *Viewport::getRenderTarget() const
+{
+	guardDisposed();
+
+	return p->target;
+}
+
+bool Viewport::getRenderTargetClear() const
+{
+	guardDisposed();
+
+	return p->targetClear;
+}
+
+void Viewport::setRenderTargetClear(bool value)
+{
+	guardDisposed();
+
+	p->targetClear = value;
+}
+
+void Viewport::setRenderPasses(const std::vector<RenderPass> &passes)
+{
+	guardDisposed();
+
+	p->passes = passes;
 }
 
 /* SceneElement */
