@@ -200,6 +200,14 @@ RB_METHOD(graphicsDisplayHeight)
     return rb_fix_new(shState->graphics().displayHeight());
 }
 
+RB_METHOD(graphicsPresentRect)
+{
+    RB_UNUSED_PARAM;
+    
+    IntRect r = shState->graphics().presentRect();
+    return rb_ary_new3(4, rb_fix_new(r.x), rb_fix_new(r.y), rb_fix_new(r.w), rb_fix_new(r.h));
+}
+
 RB_METHOD(graphicsWindowWidth)
 {
     RB_UNUSED_PARAM;
@@ -450,6 +458,7 @@ void graphicsBindingInit()
     _rb_define_module_function(module, "display_width", graphicsDisplayWidth);
     _rb_define_module_function(module, "display_height", graphicsDisplayHeight);
     _rb_define_module_function(module, "window_width", graphicsWindowWidth);
+    _rb_define_module_function(module, "present_rect", graphicsPresentRect);
     _rb_define_module_function(module, "window_height", graphicsWindowHeight);
     _rb_define_module_function(module, "wait", graphicsWait);
     _rb_define_module_function(module, "fadeout", graphicsFadeout);

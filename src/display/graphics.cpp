@@ -926,8 +926,11 @@ struct GraphicsPrivate {
         }
         
         if (integerScaleActive && !integerLastMileScaling) {
-            scOffset.x = ((winSize.x / 2) - (scRes.x / 2) * integerScaleFactor.x);
-            scOffset.y = ((winSize.y / 2) - (scRes.y / 2) * integerScaleFactor.y);
+            /* (win - res * factor) / 2 instead of win/2 - (res/2) * factor:
+             * with an odd resolution the latter rounds res/2 down and shifts
+             * the image by up to factor/2 px, cutting its last row/column */
+            scOffset.x = (winSize.x - scRes.x * integerScaleFactor.x) / 2;
+            scOffset.y = (winSize.y - scRes.y * integerScaleFactor.y) / 2;
             
             scSize = Vec2i(scRes.x * integerScaleFactor.x, scRes.y * integerScaleFactor.y);
             return;
@@ -1519,21 +1522,41 @@ void Graphics::resizeScreen(int width, int height, bool adjustWindow) {
     p->scResLores = sizeLores;
     
     p->screen.setResolution(width, height);
-    
-    if (p->integerScaleActive)
+
+    if (p->integerScaleActive) {
+        /* The integer factor depends on the resolution too, not only on the
+         * window: recompute it before sizing the buffer */
+        p->findHighestIntegerScale();
         p->rebuildIntegerScaleBuffer();
-    
+    }
+
     TEXFBO::allocEmpty(p->frozenScene, width, height);
-    
+
     FloatRect screenRect(0, 0, width, height);
     p->screenQuad.setTexPosRect(screenRect, screenRect);
-    
+
     glState.scissorBox.set(IntRect(0, 0, p->scRes.x, p->scRes.y));
+
+    /* Recompute where and how big the image is presented in the window.
+     * Upstream only did this on window resize events, so a resolution change
+     * that keeps the window size (adjustWindow=false, or a window that already
+     * had the requested size) kept presenting with the old geometry: stretched
+     * pixels and wrong borders. */
+    p->recalculateScreenSize(p->threadData->config.fixedAspectRatio);
+    p->updateScreenResoRatio(p->threadData);
+    SDL_Rect presented = {p->scOffset.x, p->scOffset.y, p->scSize.x, p->scSize.y};
+    p->threadData->ethread->notifyGameScreenChange(presented);
 
     /* adjustWindow=false lets games change the internal resolution to match
      * the current window (adaptive resolution) without shrinking the window */
     if (adjustWindow)
         shState->eThread().requestWindowResize(width, height);
+}
+
+IntRect Graphics::presentRect() const {
+    p->checkResize();
+    int f = p->backingScaleFactor;
+    return IntRect(p->scOffset.x / f, p->scOffset.y / f, p->scSize.x / f, p->scSize.y / f);
 }
 
 int Graphics::windowWidth() const {

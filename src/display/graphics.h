@@ -23,6 +23,7 @@
 #define GRAPHICS_H
 
 #include "util.h"
+#include "etc-internal.h"
 
 class Scene;
 class Bitmap;
@@ -67,6 +68,8 @@ public:
     int displayHeight() const;
 	void resizeScreen(int width, int height, bool adjustWindow=true);
     int windowWidth() const;
+    /* Where the game image is drawn inside the window (x, y, w, h in points) */
+    IntRect presentRect() const;
     int windowHeight() const;
     void resizeWindow(int width, int height, bool center=false);
 	void drawMovieFrame(const THEORAPLAY_VideoFrame* video, Bitmap *videoBitmap);
