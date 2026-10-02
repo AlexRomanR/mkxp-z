@@ -604,6 +604,10 @@ MKXPZ_TTF_FONT *SharedFontState::getFont(std::string family,
 					c.ppem = calc_ppem_for_height( &c, size );
 
 				ppem = std::max<int>(c.ppem * p->fontScale, 1);
+				/* Snap pixel fonts to their grid (fontPixelGrid in mkxp.json) */
+				int grid = shState->config().fontPixelGrid(family);
+				if (grid > 0)
+					ppem = std::max<int>(grid, (int)std::lround((float)ppem / grid) * grid);
 				ppemMult = std::max<int>(ppem * hiresMult, 1);
 			}
 			if (TTF_SetFontSize(font, ppemMult))

@@ -118,6 +118,7 @@ struct Config {
     std::vector<std::string> patches;
     
     std::vector<std::string> fontSubs;
+    std::vector<std::string> fontPixelGrids;
     float fontScale;
     bool fontKerning;
     int fontHinting;
@@ -175,6 +176,7 @@ struct Config {
     Config();
     
     bool fontIsSolid(const char *fontName) const;
+    int fontPixelGrid(const std::string &family) const;
     
     void read(int argc, char *argv[]);
     void readGameINI();

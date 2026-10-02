@@ -1498,7 +1498,7 @@ int Graphics::displayHeight() const {
     return dm.h / p->backingScaleFactor;
 }
 
-void Graphics::resizeScreen(int width, int height) {
+void Graphics::resizeScreen(int width, int height, bool adjustWindow) {
     p->threadData->rqWindowAdjust.wait();
     p->checkResize(true);
     
@@ -1529,8 +1529,21 @@ void Graphics::resizeScreen(int width, int height) {
     p->screenQuad.setTexPosRect(screenRect, screenRect);
     
     glState.scissorBox.set(IntRect(0, 0, p->scRes.x, p->scRes.y));
-    
-    shState->eThread().requestWindowResize(width, height);
+
+    /* adjustWindow=false lets games change the internal resolution to match
+     * the current window (adaptive resolution) without shrinking the window */
+    if (adjustWindow)
+        shState->eThread().requestWindowResize(width, height);
+}
+
+int Graphics::windowWidth() const {
+    p->checkResize();
+    return p->winSize.x / p->backingScaleFactor;
+}
+
+int Graphics::windowHeight() const {
+    p->checkResize();
+    return p->winSize.y / p->backingScaleFactor;
 }
 
 void Graphics::resizeWindow(int width, int height, bool center) {

@@ -187,6 +187,7 @@ void Config::read(int argc, char *argv[]) {
         {"RTP", json::array({})},
         {"patches", json::array({})},
         {"fontSub", json::array({})},
+        {"fontPixelGrid", json::array({})},
         {"fontScale", 0.0f},
         {"fontKerning", true},
         {"fontHinting", 3}, // TTF_HINTING_NONE
@@ -328,6 +329,10 @@ try { exp } catch (...) {}
     for (std::string & fontSub : fontSubs)
         std::transform(fontSub.begin(), fontSub.end(), fontSub.begin(),
             [](unsigned char c) { return std::tolower(c); });
+    fillStringVec(opts["fontPixelGrid"], fontPixelGrids);
+    for (std::string & grid : fontPixelGrids)
+        std::transform(grid.begin(), grid.end(), grid.begin(),
+            [](unsigned char c) { return std::tolower(c); });
     SET_OPT(fontScale, number);
     SET_OPT(fontKerning, boolean);
     SET_OPT(fontHinting, integer);
@@ -369,6 +374,21 @@ static void setupScreenSize(Config &conf) {
     
     if (conf.defScreenH <= 0)
         conf.defScreenH = (conf.rgssVersion == 1 ? 480 : 416);
+}
+
+/* "Family>N": pixel fonts drawn on an N-pixel grid only render crisply when
+ * their pixel size (ppem) is a multiple of N, so the computed ppem is rounded
+ * to the nearest multiple (never below N). Returns 0 if the family has no grid. */
+int Config::fontPixelGrid(const std::string &family) const {
+    for (const std::string &entry : fontPixelGrids) {
+        size_t sep = entry.find('>');
+        if (sep == std::string::npos || entry.compare(0, sep, family) != 0 || sep != family.size())
+            continue;
+        int grid = atoi(entry.c_str() + sep + 1);
+        return grid > 0 ? grid : 0;
+    }
+
+    return 0;
 }
 
 bool Config::fontIsSolid(const char *fontName) const {
