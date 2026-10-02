@@ -220,11 +220,16 @@ try { exp } catch (...) {}
     editor.battleTest = false;
     
     if (argc > 1) {
-        if (!strcmp(argv[1], "debug") || !strcmp(argv[1], "test"))
-            editor.debug = true;
-        else if (!strcmp(argv[1], "btest"))
-            editor.battleTest = true;
-        
+        /* The RPG Maker editor may launch "Game.exe console test" (VX Ace with
+         * the console enabled), so look for the mode in every argument, not
+         * only in argv[1]. */
+        for (int i = 1; i < argc; i++) {
+            if (!strcmp(argv[i], "debug") || !strcmp(argv[i], "test"))
+                editor.debug = true;
+            else if (!strcmp(argv[i], "btest"))
+                editor.battleTest = true;
+        }
+
         for (int i = 1; i < argc; i++) {
             if (strcmp(argv[i], "debug"))
                 launchArgs.push_back(argv[i]);
